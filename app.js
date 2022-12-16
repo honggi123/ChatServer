@@ -22,16 +22,20 @@ database.redis_open(redis_client);
 const conn = database.db_init();
 database.db_open(conn);
 
-// 예약자 명단 key : 유저 id, value : 유저 socket_id
-let WaitingUsers= new Map([]);
+var WaitingUsers= new Map([]); // 예약자 명단 key : 유저 id, value : 유저 socket_id
 
 // 서버 시간 가져오기
-let moment = require('moment');
+var moment = require('moment');
 require('moment-timezone');
 moment.tz.setDefault("Asia/Seoul");
 
 app.get('/', (req, res) => {
   res.render('chat');
+});
+
+// Listen for HTTP connections.
+http.listen(8080, () => {
+  console.log('Connect at 8080');
 });
 
 
@@ -139,7 +143,7 @@ io.on('connection', (socket) => {
 
 // 채팅 내역 가져오기
 function sendChatHistory(socket,usernikcname) {
- let history= [];
+ var history= [];
   
  redis_client.lrange(usernikcname, "0", "-1", (err, data) => {
         data.map(x => {
@@ -180,6 +184,3 @@ function sendMessage(socket,usernikcname) {
 
 
 
-http.listen(8080, () => {
-  console.log('Connect at 8080');
-});
