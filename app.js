@@ -67,7 +67,18 @@ io.on('connection', (socket) => {
     try {
 	WaitingUsers.set(data.consultuser,socket.id);
 
-//      socket.emit('onUserWaiting', 'success');
+      socket.emit('receive_message', {
+	sender:data.consultuser,
+	text: data.content,
+	createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
+	});
+
+      socket.emit('receive_message', {
+        sender:"fitoc",
+        text: "안녕하세요. 이번 연휴 잘 지내셨나요? 잠시만 기다려주시면 연락드리겠습니다.",
+        createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
+        });
+
      //callback( { success : true } );
     } catch (err) {
         console.error(err);
