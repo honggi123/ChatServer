@@ -5,8 +5,6 @@ moment.tz.setDefault("Asia/Seoul");
 
 const notification = require('../helpers/notification');
 
-var waitingusers = new Map([]); // 예약자 명단 key : 유저 id, value : 유저 socket_id
-
 module.exports = (app, io, db, redis_db) => {
 io.on('connection', (socket) => {
     console.log('connect');
@@ -52,8 +50,8 @@ io.on('connection', (socket) => {
       socket.on('add_waiting', (data) => {
        console.log('add_waiting',data);
        try {
-         waitingusers.set(data.consultuser,socket.id);
-   
+         redis_db.hset('waitingusers',data.consultuser,socket.id)
+
          socket.emit('receive_message', {
          sender:data.consultuser,
          text: data.content,
@@ -78,8 +76,18 @@ io.on('connection', (socket) => {
        socket.join(data.consultuser);
       
       // 클라이언트 소켓 아이디를 통해서 그 소켓을 같은 방에 참여시킨다.
-       io.to(waitingusers.get(data.consultuser)).emit("join_chat_room","");
-       waitingusers.delete(data.consultuser) 
+     redis_db.hget("waitingusers", data.consultuser, function (err, result) {
+      console.log(result);
+      if(result !== null){
+        io.to(result).emit("join_chat_room","");
+      }
+      if(err){
+            console.log(err);
+        }       
+    });
+
+
+       redis_db.hdel("waitingusers",data.consultuser)
        redis_db.hset('chattingusers',data.consultuser,"userdata")
 
       //  notification.pushAlarm()
@@ -89,8 +97,8 @@ io.on('connection', (socket) => {
       socket.on('cancel_consult', (data) => {
        console.log('cancel_consult',data);
        try {
-         waitingusers.delete(data.consultuser)
-       } catch (err) {
+        redis_db.hdel("waitingusers",data.consultuser)
+      } catch (err) {
            console.error(err);
        }
      });
