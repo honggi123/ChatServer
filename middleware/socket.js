@@ -20,6 +20,20 @@ io.on('connection', (socket) => {
     // 채팅방 입장 후 관리자/ 유저 참여 확인
     socket.on('join_user', (data) => {
      sendChatHistory(socket,data.consultuser)
+     
+     // 채팅 종료가 되지 않은채로 다시 입장했다면 
+     redis_db.hget("chattingusers", data.consultuser, function (err, result) {
+        console.log(result);
+        if(result !== null){
+          socket.join(data.consultuser);
+          // 같은 방에 참여시킨다.
+          socket.emit("join_chat_room","")
+        }
+        if(err){
+              console.log(err);
+          }       
+      });
+
      if(data.isAdmin== "true"){
          console.log('join_admin');   
        }else{
@@ -62,10 +76,12 @@ io.on('connection', (socket) => {
     socket.on('start_consult', (data)=>{
        console.log('start_consult',data);
        socket.join(data.consultuser);
-     // 클라이언트 소켓 아이디를 통해서 그 소켓을 같은 방에 참여시킨다.
+      
+      // 클라이언트 소켓 아이디를 통해서 그 소켓을 같은 방에 참여시킨다.
        io.to(waitingusers.get(data.consultuser)).emit("join_chat_room","");
        waitingusers.delete(data.consultuser) 
-   
+       redis_db.hset('chattingusers',data.consultuser,"userdata")
+
       //  notification.pushAlarm()
    });
    
@@ -84,6 +100,7 @@ io.on('connection', (socket) => {
     //  상담종료
      socket.on('end_consult', (data)=>{
         console.log('end_consult',data.consultuser);
+        redis_db.hdel("chattingusers",data.consultuser)
    
         io.to(data.consultuser).emit('end_consult', '');
     });
