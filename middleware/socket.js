@@ -27,7 +27,7 @@ io.on('connection', (socket) => {
         if(result !== null){
           socket.join(data.consultuser);
           // 같은 방에 참여시킨다.
-          socket.emit("join_chat_room","")
+          socket.emit("rejoin_chat_room","")
         }
         if(err){
               console.log(err);
@@ -55,9 +55,9 @@ io.on('connection', (socket) => {
          waitingusers.set(data.consultuser,socket.id);
    
          socket.emit('receive_message', {
-       sender:data.consultuser,
-       text: data.content,
-       createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
+         sender:data.consultuser,
+         text: data.content,
+         createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
        });
    
          socket.emit('receive_message', {
