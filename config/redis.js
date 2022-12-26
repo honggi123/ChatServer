@@ -1,7 +1,6 @@
 
 const redis = require('redis');
 require("dotenv").config();
-
 var db;
 
 connectDatabase = () => {
@@ -10,12 +9,13 @@ connectDatabase = () => {
         legacyMode:true,
         socket: {
         port: 6379,
-        host: 'fitdocredis.h3ilzg.ng.0001.apn2.cache.amazonaws.com'
+        host: process.env.REDIS_HOST,
       },
       password: ''
       });
 
-      db.connect(function (err) {
+       db.connect(function (err) {
+
         if (err) {
           console.error('redis connection error :' + err);
         } else {
