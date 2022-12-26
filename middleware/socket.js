@@ -3,14 +3,20 @@ var moment = require('moment');
 require('moment-timezone');
 moment.tz.setDefault("Asia/Seoul");
 
+const redis = require('redis');
+
 const notification = require('../helpers/notification');
 
-var waitingusers = new Map([]); // 예약자 명단 key : 유저 id, value : 유저 socket_id
-
 module.exports = (app, io, db, redis_db) => {
+
 io.on('connection', (socket) => {
     console.log('connect');
-     
+
+    var pub = redis.createClient(6379,process.env.REDIS_HOST);
+    pub.connect();
+    var sub = pub.duplicate();
+    sub.connect();
+    
     // 연결 끊김
     socket.on('disconnect', () => {
        socket.leave();
@@ -19,14 +25,34 @@ io.on('connection', (socket) => {
     
     // 채팅방 입장 후 관리자/ 유저 참여 확인
     socket.on('join_user', (data) => {
-     sendChatHistory(socket,data.consultuser)
+     sendChatHistory(socket,"honggi123")
      
+     if(data.isAdmin){
+      sendConsultContent(socket,data.consultuser)
+     }
+
+     sub.subscribe(data.consultuser,(message,channel)=>{
+      var msg =JSON.parse(message);
+      console.log("Message.action '" + msg.action +" message.data " + msg.data +"' on channel '" + channel + "' arrived!")
+
+      if(msg.action == "join_chat_room"){
+        socket.emit('connect_consult','');
+      }else{
+        socket.emit(msg.action,msg.data);
+      }
+      
+     });
+
+     sub.on("message", (channel, message) =>{
+      console.log("Message '" + message + "' on channel '" + channel + "' arrived!")
+    });
+   
+
      // 채팅 종료가 되지 않은채로 다시 입장했다면 
      redis_db.hget("chattingusers", data.consultuser, function (err, result) {
         console.log(result);
         if(result !== null){
-          socket.join(data.consultuser);
-          // 같은 방에 참여시킨다.
+        
           socket.emit("rejoin_chat_room","")
         }
         if(err){
@@ -44,16 +70,23 @@ io.on('connection', (socket) => {
      // 관리자가 채팅 연결 요청
      socket.on('join_chat_room', (data) => {
        console.log('join_chat_room',data);
-       socket.join(data.consultuser);
-       io.to(data.consultuser).emit('connect_consult', 'success');
+
+
+       var reply = JSON.stringify({
+        action: 'connect_consult',
+        data : 'success'
      });
+
+     pub.publish(data.consultuser,reply);
+     });
+
    
      // 회원 상담 예약 신청
       socket.on('add_waiting', (data) => {
        console.log('add_waiting',data);
        try {
-         waitingusers.set(data.consultuser,socket.id);
-   
+         redis_db.hset('waitingusers',data.consultuser,data.content)
+
          socket.emit('receive_message', {
          sender:data.consultuser,
          text: data.content,
@@ -66,7 +99,6 @@ io.on('connection', (socket) => {
            createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
            });
    
-        //callback( { success : true } );
        } catch (err) {
            console.error(err);
        }
@@ -75,39 +107,49 @@ io.on('connection', (socket) => {
     // 상담사 상담 신청
     socket.on('start_consult', (data)=>{
        console.log('start_consult',data);
-       socket.join(data.consultuser);
       
-      // 클라이언트 소켓 아이디를 통해서 그 소켓을 같은 방에 참여시킨다.
-       io.to(waitingusers.get(data.consultuser)).emit("join_chat_room","");
-       waitingusers.delete(data.consultuser) 
+        var reply = JSON.stringify({
+          action: 'join_chat_room',
+          data : ''
+       });
+
+       pub.publish(data.consultuser,reply);
+
+       redis_db.hdel("waitingusers",data.consultuser)
        redis_db.hset('chattingusers',data.consultuser,"userdata")
 
-      //  notification.pushAlarm()
    });
    
     // 회원 상담 신청 취소
       socket.on('cancel_consult', (data) => {
        console.log('cancel_consult',data);
        try {
-         waitingusers.delete(data.consultuser)
-       } catch (err) {
+        redis_db.hdel("waitingusers",data.consultuser)
+      } catch (err) {
            console.error(err);
        }
      });
    
    
-   
+  
     //  상담종료
      socket.on('end_consult', (data)=>{
         console.log('end_consult',data.consultuser);
         redis_db.hdel("chattingusers",data.consultuser)
    
-        io.to(data.consultuser).emit('end_consult', '');
+        var reply = JSON.stringify({
+          action: 'end_consult',
+          data : ''
+       });
+
+       pub.publish(data.consultuser,reply);
+
     });
    
    
-     // 메시지
+     // 메시지 
      socket.on('send_message', (data) => {
+
         console.log('send_message',data);
    
         data.createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
@@ -122,12 +164,30 @@ io.on('connection', (socket) => {
                console.log('query error : ' + err);
            }
        }); 
+
+       var reply = JSON.stringify({
+        action: 'receive_message',
+        data : data
+     }); 
+
+     pub.publish(data.consultuser,reply);
    
-         io.to(data.consultuser).emit('receive_message', data);
    
      });
+   
    });
    
+   function sendConsultContent(socket,consultuser) {
+    redis_db.hget("waitingusers",consultuser , function (err, content) {
+      console.log(content);
+      if(content !== null){
+        socket.emit("receive_consult_content",content)
+      }
+      if(err){
+            console.log(err);
+        }       
+    });
+  }
    
    // 채팅 내역 가져오기
    function sendChatHistory(socket,usernikcname) {
@@ -139,7 +199,7 @@ io.on('connection', (socket) => {
                const redisSender = usernameMessage[0];
                const redisMessage = usernameMessage[1];
                const redisCreatedAt = usernameMessage[2];
-             const obj = {
+               const obj = {
                    sender: redisSender,
                    text: redisMessage,
                    createdAt : redisCreatedAt
@@ -150,5 +210,15 @@ io.on('connection', (socket) => {
    
      socket.emit("receive_initial_message",JSON.stringify(history));
        });
+
+     
+
+       
    }
+   
 };
+
+
+
+
+

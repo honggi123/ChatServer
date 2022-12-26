@@ -9,15 +9,16 @@ require("dotenv").config();
 
 // DB config
 const db = require("./config/database");
-const redisdb = require("./config/redis");
+const redis_db = require('./config/redis');
+
 
 // Chat application components
 
 // app.use(cors());
 
 // View engine setup
-// app.set('view engine', 'ejs');
-// app.set('views', './views');
+app.set('view engine', 'ejs');
+app.set('views', './views');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -32,6 +33,7 @@ http.listen(process.env.SERVER_PORT, () => {
 });
 
 /** Chatroom routes */
-require("./middleware/socket")(app, io, db,redisdb);
+require("./middleware/socket")(app, io, db,redis_db);
+
 
 
