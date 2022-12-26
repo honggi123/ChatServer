@@ -25,11 +25,38 @@ io.on('connection', (socket) => {
     
     // 채팅방 입장 후 관리자/ 유저 참여 확인
     socket.on('join_user', (data) => {
-     sendChatHistory(socket,"honggi123")
+     sendChatHistory(socket,"honggi123")  // 채팅 내역 전송
      
+    
      if(data.isAdmin){
+       // 관리자
+      console.log('join_admin');   
       sendConsultContent(socket,data.consultuser)
+     }else{
+      // 회원 
+      console.log('join_user');   
+         // 상담 신청 완료 후 다시 입장
+          redis_db.hget("waitingusers", data.consultuser, function (err, result) {
+            console.log(result);
+            if(result !== null){
+              socket.emit("rejoin_submit_consult",result)
+            }
+            if(err){
+                  console.log(err);
+              }       
+          });
      }
+
+      // 채팅 종료가 되지 않은채로 다시 입장
+        redis_db.hget("chattingusers", data.consultuser, function (err, result) {
+          console.log(result);
+          if(result !== null){
+            socket.emit("rejoin_chat_room","")
+          }
+          if(err){
+                console.log(err);
+            }       
+      });
 
      sub.subscribe(data.consultuser,(message,channel)=>{
       var msg =JSON.parse(message);
@@ -40,37 +67,14 @@ io.on('connection', (socket) => {
       }else{
         socket.emit(msg.action,msg.data);
       }
-      
      });
 
-     sub.on("message", (channel, message) =>{
-      console.log("Message '" + message + "' on channel '" + channel + "' arrived!")
-    });
-   
-
-     // 채팅 종료가 되지 않은채로 다시 입장했다면 
-     redis_db.hget("chattingusers", data.consultuser, function (err, result) {
-        console.log(result);
-        if(result !== null){
-        
-          socket.emit("rejoin_chat_room","")
-        }
-        if(err){
-              console.log(err);
-          }       
-      });
-
-     if(data.isAdmin== "true"){
-         console.log('join_admin');   
-       }else{
-         console.log('join_user');   
-       }
      });
    
+
      // 관리자가 채팅 연결 요청
      socket.on('join_chat_room', (data) => {
        console.log('join_chat_room',data);
-
 
        var reply = JSON.stringify({
         action: 'connect_consult',
