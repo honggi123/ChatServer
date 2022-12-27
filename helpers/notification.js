@@ -20,10 +20,8 @@ const sendmessage = async (token,title,content) => {
         data: JSON.stringify(message),
       });
 
-//    return res.status(200).json({ msg: 'success' });
   } catch (err) {
     console.log(err);
-  //  return res.status(400).json({ msg: 'fail' });
   }
 };
 

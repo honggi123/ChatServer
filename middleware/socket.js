@@ -27,7 +27,7 @@ io.on('connection', (socket) => {
     socket.on('join_user', (data) => {
      sendChatHistory(socket,"honggi123")  // 채팅 내역 전송
      
-    
+  
      if(data.isAdmin){
        // 관리자
       console.log('join_admin');   
@@ -122,6 +122,10 @@ io.on('connection', (socket) => {
        redis_db.hdel("waitingusers",data.consultuser)
        redis_db.hset('chattingusers',data.consultuser,"userdata")
 
+       if(data.token != null){
+        notification.sendmessage(data.token,"FITDOC","상담이 시작되었어요.")
+       }
+
    });
    
     // 회원 상담 신청 취소
@@ -150,12 +154,9 @@ io.on('connection', (socket) => {
 
     });
    
-   
      // 메시지 
      socket.on('send_message', (data) => {
-
         console.log('send_message',data);
-   
         data.createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
         redis_db.rpush(data.consultuser, `${data.sender}/${data.text}/${data.createdAt}`);
    
@@ -175,7 +176,10 @@ io.on('connection', (socket) => {
      }); 
 
      pub.publish(data.consultuser,reply);
-   
+
+     if(data.token != null){
+      notification.sendmessage(data.token,data.sender,data.text)
+     }
    
      });
    
