@@ -25,9 +25,8 @@ io.on('connection', (socket) => {
     
     // 채팅방 입장 후 관리자/ 유저 참여 확인
     socket.on('join_user', (data) => {
-     sendChatHistory(socket,"honggi123")  // 채팅 내역 전송
-     
-  
+     sendChatHistory(socket,data.consultuser)  // 채팅 내역 전송
+    
      if(data.isAdmin){
        // 관리자
       console.log('join_admin');   
@@ -176,7 +175,6 @@ io.on('connection', (socket) => {
      }); 
 
      pub.publish(data.consultuser,reply);
-
      if(data.token != null){
       notification.sendmessage(data.token,data.sender,data.text)
      }
