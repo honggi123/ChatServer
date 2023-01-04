@@ -157,8 +157,7 @@ io.on('connection', (socket) => {
      socket.on('send_message', (data) => {
         console.log('send_message',data);
         data.createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
-        redis_db.rpush(data.consultuser, `${data.sender}/${data.text}/${data.createdAt}`);
-   
+        // redis_db.rpush(data.consultuser, `${data.sender}/${data.text}/${data.createdAt}`);
      // db 메시지 저장
          db.query('INSERT INTO message(consultuserid,text,sender,createdAt) VALUES (?,?,?,?)',[data.consultuser,data.text,data.sender,data.createdAt], function (err, rows, fields) {
            if (!err) {
@@ -196,30 +195,25 @@ io.on('connection', (socket) => {
   }
    
    // 채팅 내역 가져오기
-   function sendChatHistory(socket,usernikcname) {
-    var history= [];
-     
-    redis_db.lrange(usernikcname, "0", "-1", (err, data) => {
-           data.map(x => {
-               const usernameMessage = x.split("/");
-               const redisSender = usernameMessage[0];
-               const redisMessage = usernameMessage[1];
-               const redisCreatedAt = usernameMessage[2];
+   function sendChatHistory(socket,consultuserid) {
+      let history= [];
+      db.query('SELECT * FROM message where consultuserid=?',[consultuserid], function(error, messages){
+
+        console.log(messages)
+          messages.map(x => {
+            console.log(x)
+
                const obj = {
-                   sender: redisSender,
-                   text: redisMessage,
-                   createdAt : redisCreatedAt
-            }           
-           history.push(obj);
-             
+                   sender: x.sender,
+                   text: x.text,
+                   createdAt : x.createdAt
+            }      
+            history.push(obj);
+     
            });
-   
+
      socket.emit("receive_initial_message",JSON.stringify(history));
        });
-
-     
-
-       
    }
    
 };
