@@ -29,21 +29,21 @@ io.on('connection', (socket) => {
     
      if(data.isAdmin){
        // 관리자
-      console.log('join_admin');   
+      console.log('join_admin',data);   
       sendConsultContent(socket,data.consultuser)
      }else{
       // 회원 
-      console.log('join_user');   
+      console.log('join_user'.data);   
          // 상담 신청 완료 후 다시 입장
-          redis_db.hget("waitingusers", data.consultuser, function (err, result) {
-            console.log(result);
-            if(result !== null){
-              socket.emit("rejoin_submit_consult",result)
-            }
-            if(err){
-                  console.log(err);
-              }       
-          });
+          // redis_db.hget("waitingusers", data.consultuser, function (err, result) {
+          //   console.log(result);
+          //   if(result !== null){
+          //     socket.emit("rejoin_submit_consult",result)
+          //   }
+          //   if(err){
+          //         console.log(err);
+          //     }       
+          // });
      }
 
       // 채팅 종료가 되지 않은채로 다시 입장
@@ -118,7 +118,7 @@ io.on('connection', (socket) => {
 
        pub.publish(data.consultuser,reply);
 
-       redis_db.hdel("waitingusers",data.consultuser)
+      //  redis_db.hdel("waitingusers",data.consultuser)
        redis_db.hset('chattingusers',data.consultuser,"userdata")
 
        if(data.token != null){
@@ -157,7 +157,6 @@ io.on('connection', (socket) => {
      socket.on('send_message', (data) => {
         console.log('send_message',data);
         data.createdAt = moment().format('YYYY-MM-DD HH:mm:ss');
-        // redis_db.rpush(data.consultuser, `${data.sender}/${data.text}/${data.createdAt}`);
      // db 메시지 저장
          db.query('INSERT INTO message(consultuserid,text,sender,createdAt) VALUES (?,?,?,?)',[data.consultuser,data.text,data.sender,data.createdAt], function (err, rows, fields) {
            if (!err) {
