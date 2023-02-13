@@ -60,6 +60,7 @@ io.on('connection', (socket) => {
         redis_db.hget("chattingusers", data.consultuser, function (err, result) {
           console.log(result);
           if(result !== null){
+            socket.join(data.consultuser);     
             socket.emit("rejoin_chat_room","")
           }
           if(err){
