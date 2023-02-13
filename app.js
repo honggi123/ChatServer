@@ -2,7 +2,7 @@
 // Chat application dependencies
 const app = require('express')();
 const http = require('http').Server(app);
-const io = require('socket.io')(http);
+const io = require('socket.io')(http, { cors: { origin: "*" } });
 const bodyParser = require('body-parser');
 const cors = require('cors');
 require("dotenv").config();
@@ -14,7 +14,7 @@ const redis_db = require('./config/redis');
 
 // Chat application components
 
-// app.use(cors());
+app.use(cors());
 
 // View engine setup
 app.set('view engine', 'ejs');
